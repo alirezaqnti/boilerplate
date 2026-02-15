@@ -1,0 +1,238 @@
+import os
+from pathlib import Path
+
+from dotenv import load_dotenv
+from .packages import *
+
+# Build paths inside the project like this: BASE_DIR / 'subdir'.
+BASE_DIR = Path(__file__).resolve().parent.parent
+
+# Load environment from .env if present (for MinIO creds, etc.)
+load_dotenv(BASE_DIR / ".env")
+
+
+# Quick-start development settings - unsuitable for production
+# See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
+
+# SECURITY WARNING: keep the secret key used in production secret!
+SECRET_KEY = "django-insecure-&6^0-uxgjdw+b$bbgt2wk+umahqh=)tqhu^ei(4q7oyo^gm(^u"
+
+# SECURITY WARNING: don't run with debug turned on in production!
+DEBUG = os.getenv("DEBUG", "True").lower() in ("true", "1", "yes")
+
+ALLOWED_HOSTS = os.getenv("ALLOWED_HOSTS", "").split(",")
+DATA_UPLOAD_MAX_NUMBER_FIELDS = 2000
+
+# Application definition
+
+INSTALLED_APPS = [
+    "django.contrib.admin",
+    "django.contrib.auth",
+    "django.contrib.contenttypes",
+    "django.contrib.sessions",
+    "django.contrib.messages",
+    "django.contrib.staticfiles",
+    "storages",
+    "django_jsonform",
+    "django_ckeditor_5",
+    "django_filters",
+    "rest_framework",
+    "drf_spectacular",
+    "common.apps.CommonConfig",
+    "users.apps.UsersConfig",
+    "auth.apps.AuthConfig",
+]
+
+# Custom user model
+AUTH_USER_MODEL = "users.User"
+
+# Auth backends
+AUTHENTICATION_BACKENDS = ("django.contrib.auth.backends.ModelBackend",)
+
+# Cache is used by role checks (short TTL) and request-scoped permission checks.
+# Prefer Redis when available; fall back to local memory for dev environments.
+REDIS_URL = os.getenv("REDIS_URL", "").strip()
+
+if REDIS_URL:
+    CACHES = {
+        "default": {
+            "BACKEND": "django_redis.cache.RedisCache",
+            "LOCATION": REDIS_URL,
+            "OPTIONS": {
+                "CLIENT_CLASS": "django_redis.client.DefaultClient",
+                "IGNORE_EXCEPTIONS": True,
+            },
+            "KEY_PREFIX": "hatchup",
+        }
+    }
+else:
+    CACHES = {
+        "default": {
+            "BACKEND": "django.core.cache.backends.locmem.LocMemCache",
+            "LOCATION": "hatchup-auth",
+        }
+    }
+
+MIDDLEWARE = [
+    "django.middleware.security.SecurityMiddleware",
+    "django.contrib.sessions.middleware.SessionMiddleware",
+    "django.middleware.common.CommonMiddleware",
+    "django.middleware.csrf.CsrfViewMiddleware",
+    "django.contrib.auth.middleware.AuthenticationMiddleware",
+    "django.contrib.messages.middleware.MessageMiddleware",
+    "django.middleware.clickjacking.XFrameOptionsMiddleware",
+]
+
+ROOT_URLCONF = "core.urls"
+
+TEMPLATES = [
+    {
+        "BACKEND": "django.template.backends.django.DjangoTemplates",
+        "DIRS": [BASE_DIR / "templates"],
+        "APP_DIRS": True,
+        "OPTIONS": {
+            "context_processors": [
+                "django.template.context_processors.request",
+                "django.contrib.auth.context_processors.auth",
+                "django.contrib.messages.context_processors.messages",
+            ],
+        },
+    },
+]
+
+WSGI_APPLICATION = "core.wsgi.application"
+
+
+# Database
+# https://docs.djangoproject.com/en/5.2/ref/settings/#databases
+
+
+DATABASES = {
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": os.getenv("DB_NAME", "postgres"),
+        "USER": os.getenv("DB_USER", "postgres"),
+        "PASSWORD": os.getenv("DB_PASSWORD", "postgres"),
+        "HOST": os.getenv("DB_HOST", "localhost"),
+        "PORT": os.getenv("DB_PORT", "5432"),
+    }
+}
+
+
+# Password validation
+# https://docs.djangoproject.com/en/5.2/ref/settings/#auth-password-validators
+
+AUTH_PASSWORD_VALIDATORS = [
+    {
+        "NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.MinimumLengthValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.CommonPasswordValidator",
+    },
+    {
+        "NAME": "django.contrib.auth.password_validation.NumericPasswordValidator",
+    },
+]
+
+
+# Internationalization
+# https://docs.djangoproject.com/en/5.2/topics/i18n/
+
+LANGUAGE_CODE = "en-us"
+
+TIME_ZONE = "UTC"
+
+USE_I18N = True
+
+USE_TZ = True
+
+
+# Static files (CSS, JavaScript, Images)
+# https://docs.djangoproject.com/en/5.2/howto/static-files/
+
+STATIC_URL = "static/"
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+# Default local media (used when MinIO env vars aren't set)
+MEDIA_URL = "/media/"
+MEDIA_ROOT = BASE_DIR / "media"
+
+# Media storage (MinIO via S3-compatible API)
+# Set these in `.env`:
+# - MINIO_ENDPOINT=localhost:9000
+# - MINIO_ACCESS_KEY=...
+# - MINIO_SECRET_KEY=...
+# - MINIO_BUCKET_NAME=...
+# - MINIO_USE_HTTPS=false
+MINIO_ENDPOINT = os.getenv("MINIO_ENDPOINT", "")
+MINIO_USE_HTTPS = os.getenv("MINIO_USE_HTTPS", "false").lower() == "true"
+AWS_S3_USE_SSL = MINIO_USE_HTTPS
+
+AWS_ACCESS_KEY_ID = os.getenv("MINIO_ACCESS_KEY", "")
+AWS_SECRET_ACCESS_KEY = os.getenv("MINIO_SECRET_KEY", "")
+AWS_STORAGE_BUCKET_NAME = os.getenv("MINIO_BUCKET_NAME", "")
+AWS_S3_REGION_NAME = os.getenv("MINIO_REGION", "us-east-1")
+AWS_S3_ENDPOINT_URL = (
+    f"{'https' if MINIO_USE_HTTPS else 'http'}://{MINIO_ENDPOINT}"
+    if MINIO_ENDPOINT
+    else None
+)
+AWS_S3_SIGNATURE_VERSION = "s3v4"
+AWS_S3_ADDRESSING_STYLE = "path"
+AWS_DEFAULT_ACL = None
+AWS_QUERYSTRING_AUTH = False
+AWS_S3_FILE_OVERWRITE = False
+
+_MINIO_READY = bool(
+    MINIO_ENDPOINT
+    and AWS_STORAGE_BUCKET_NAME
+    and AWS_ACCESS_KEY_ID
+    and AWS_SECRET_ACCESS_KEY
+)
+
+if _MINIO_READY:
+    _S3_OPTIONS = {
+        "access_key": AWS_ACCESS_KEY_ID,
+        "secret_key": AWS_SECRET_ACCESS_KEY,
+        "bucket_name": AWS_STORAGE_BUCKET_NAME,
+        "endpoint_url": AWS_S3_ENDPOINT_URL,
+        "region_name": AWS_S3_REGION_NAME,
+        "addressing_style": AWS_S3_ADDRESSING_STYLE,
+    }
+    _S3_OPTIONS = {k: v for k, v in _S3_OPTIONS.items() if v}
+
+    _MINIO_BASE_URL = AWS_S3_ENDPOINT_URL.rstrip("/")
+    MEDIA_URL = f"{_MINIO_BASE_URL}/{AWS_STORAGE_BUCKET_NAME}/media/"
+    STATIC_URL = f"{_MINIO_BASE_URL}/{AWS_STORAGE_BUCKET_NAME}/static/"
+
+    STORAGES = {
+        "default": {
+            "BACKEND": "core.storages.MediaStorage",
+            "OPTIONS": _S3_OPTIONS,
+        },
+        "staticfiles": {
+            "BACKEND": "core.storages.StaticStorage",
+            "OPTIONS": _S3_OPTIONS,
+        },
+    }
+else:
+    STORAGES = {
+        "default": {
+            "BACKEND": "django.core.files.storage.FileSystemStorage",
+            "OPTIONS": {"location": MEDIA_ROOT, "base_url": MEDIA_URL},
+        },
+        "staticfiles": {
+            "BACKEND": "django.contrib.staticfiles.storage.StaticFilesStorage",
+        },
+    }
+
+# Default primary key field type
+# https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
+
+DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+ENVIRONMENT = os.getenv("ENVIRONMENT", "local")

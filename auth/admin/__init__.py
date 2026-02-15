@@ -1,0 +1,1 @@
+"""Authentication app admin registrations."""
