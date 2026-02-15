@@ -236,3 +236,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 
 ENVIRONMENT = os.getenv("ENVIRONMENT", "local")
+
+from .packages.sentry import init_sentry
+
+init_sentry(environment=ENVIRONMENT)

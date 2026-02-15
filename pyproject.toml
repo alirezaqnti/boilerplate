@@ -29,6 +29,7 @@ dependencies = [
     "python-magic (==0.4.27)",
     "django-ckeditor-5 (==0.2.19)",
     "six (==1.17.0)",
+    "sentry-sdk (>=2.0.0,<3.0.0)",
 ]
 
 
