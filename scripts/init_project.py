@@ -16,6 +16,8 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import shutil
+import subprocess
 import sys
 from pathlib import Path
 
@@ -98,6 +100,9 @@ def main() -> int:
     if args.dry_run:
         print("Dry run. Would set:")
         print(json.dumps(config, indent=2))
+        print(
+            "Would copy .env.example to .env (if .env missing) and run poetry install."
+        )
         return 0
 
     print(f"Configuring project: {project_name}")
@@ -165,11 +170,30 @@ def main() -> int:
     config_path.write_text(json.dumps(config, indent=2) + "\n", encoding="utf-8")
     print(f"  Wrote: {config_path.relative_to(ROOT)}")
 
-    print("\nDone. Next steps:")
-    print(
-        "  1. Copy .env.example to .env and set DB_NAME, MINIO_BUCKET_NAME, etc. if needed."
+    # Copy .env.example to .env if .env does not exist
+    env_example = ROOT / ".env.example"
+    env_file = ROOT / ".env"
+    if env_example.exists():
+        if not env_file.exists():
+            shutil.copy(env_example, env_file)
+            print(f"  Copied: .env.example -> .env")
+        else:
+            print("  .env already exists; skipped copying .env.example")
+    else:
+        print("  Skip: .env.example not found")
+
+    # Run poetry install
+    print("\nRunning: poetry install")
+    result = subprocess.run(
+        ["poetry", "install"],
+        cwd=ROOT,
+        capture_output=False,
     )
-    print("  2. Run: poetry install && python manage.py migrate")
+    if result.returncode != 0:
+        print("  poetry install failed; run it manually: poetry install")
+        return result.returncode
+
+    print("\nDone. Next step: python manage.py migrate")
     return 0
 
 
